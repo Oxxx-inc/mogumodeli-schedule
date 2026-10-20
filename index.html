@@ -226,9 +226,46 @@ footer { font-size: 12px; color: var(--mute); }
   .day.today .n::after { display: none; }
   .form { grid-template-columns: 1fr; }
   .step { grid-template-columns: 86px 1fr; }
+  .chk { grid-column: 2; justify-self: start; }
   .date .md { font-size: 26px; }
   .date .md.range { font-size: 17px; }
 }
+/* 進み具合：チェック、いまここ、遅れ */
+.step { grid-template-columns: 112px 1fr auto; }
+.chk {
+  display: inline-flex; align-items: center; gap: 6px; align-self: center;
+  background: var(--paper); color: var(--mute); border: 1px solid var(--rule); font-size: 12px; padding: 6px 10px;
+}
+.chk i { width: 16px; height: 16px; border: 2px solid var(--rule); border-radius: 4px; position: relative; }
+.chk[aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: #fff; }
+.chk[aria-pressed="true"] i { border-color: #fff; background: #fff; }
+.chk[aria-pressed="true"] i::after { content: ""; position: absolute; left: 4px; top: 0; width: 4px; height: 8px; border: solid var(--ok); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.step.cur { box-shadow: inset 4px 0 0 var(--ink); }
+.step.cur .chk { color: var(--ink); border-color: var(--ink); font-weight: 700; }
+.step.done .date { background: var(--bg); }
+.step.done .date .md, .step.done .date .wd, .step.done h3, .step.done .body p { color: var(--mute); }
+.step.late { background: var(--warn-soft); }
+.step.late .chk { border-color: var(--warn); color: var(--warn); }
+.done-txt { color: var(--ok); font-weight: 700; }
+.late-txt { color: var(--warn); font-weight: 700; }
+.sec-count { margin-left: 10px; font-family: var(--mono); font-size: 13px; color: var(--mute); font-weight: 600; }
+.progress { display: grid; gap: 8px; }
+.progress:empty { display: none; }
+.pg-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px 16px; flex-wrap: wrap; font-size: 13px; color: var(--mute); }
+.pg-cur b { color: var(--ink); font-size: 15px; }
+.pg-n { font-family: var(--mono); }
+.pg-n b { font-size: 20px; color: var(--num); }
+.bar { display: block; height: 8px; background: var(--rule); border-radius: 999px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--ok); border-radius: 999px; }
+.pg-late { font-size: 13px; color: var(--warn); font-weight: 700; }
+.ev.done { opacity: .5; }
+.ev.late { box-shadow: inset 0 0 0 1.5px var(--warn); }
+.h-pg { display: flex !important; align-items: center; gap: 8px; width: 100%; margin-top: 4px; }
+.h-pg .bar { flex: 0 0 72px; height: 6px; }
+.h-st { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.h-n { font-family: var(--mono); color: var(--num); font-weight: 700; }
+.h-late { font-style: normal; color: #fff; background: var(--warn); border-radius: 3px; padding: 0 5px; font-weight: 700; margin-right: 4px; }
+
 /* PDF 保存（印刷）：カレンダーだけを A4 横で、1か月1ページに出す */
 @page { size: A4 landscape; margin: 10mm; }
 @media print {
@@ -252,6 +289,7 @@ footer { font-size: 12px; color: var(--mute); }
   .day.today { box-shadow: none; }
   .day.today .n::after { display: none; }
   .day.past .ev { opacity: 1; }
+  .ev.done { opacity: .5; }
   .ev { font-size: 10px; -webkit-line-clamp: 2; }
 }
 </style>
@@ -298,6 +336,8 @@ footer { font-size: 12px; color: var(--mute); }
         </div>
       </div>
     </section>
+
+    <div id="progress" class="progress"></div>
 
     <div id="alert" class="alerts" aria-live="polite" hidden></div>
 
@@ -389,12 +429,15 @@ els.base.value = iso(backToWeekday(today + 90));
 
 const val = name => document.querySelector(`input[name="${name}"]:checked`).value;
 let lastPlan = null;
+let done = {};
 
 function compute() {
   if (!els.base.value) return null;
-  const mode = val('mode');
-  const base = toDay(els.base.value);
-  const fix = n => (els.shift.checked ? backToWeekday(n) : n);
+  return computeFor(val('mode'), els.base.value, els.shift.checked);
+}
+function computeFor(mode, baseStr, shift) {
+  const base = toDay(baseStr);
+  const fix = n => (shift ? backToWeekday(n) : n);
   // 逆算は納品日から入稿日を出し、その3営業日前を商品情報の確定日にする。
   // 順算は確定日（入力）から3営業日で入稿し、そこから実績の57日で納品する。
   let end, submit, fixDay;
@@ -439,6 +482,7 @@ function render() {
   $('alert').hidden = !alerts.length;
 
   const nextIdx = steps.findIndex(s => s.due >= today);
+  const curIdx = steps.findIndex(s => !done[s.name]);
   $('list').innerHTML = Object.entries(PHASES).map(([k, ph], i) => {
     const list = steps.filter(s => s.ph === k);
     const due = Math.max(...list.map(s => s.due));
@@ -454,19 +498,25 @@ function render() {
       else if (s.key === 'swap') gaps.push(`作業 ${SWAP_BD}営業日`);
       else if (s.from != null) gaps.push(`作業 ${s.due - s.from + 1}日間`);
       if (s.shifted) gaps.push('<span class="shift">土日のため前倒し</span>');
-      return `${line}<li class="step${s.due < today ? ' past' : ''}${s.final ? ' final' : ''}" style="${tone(s, PHASES[s.ph])}">
+      const isDone = !!done[s.name];
+      const late = !isDone && s.due < today;
+      if (late) gaps.unshift(`<span class="late-txt">${today - s.due}日 遅れ</span>`);
+      if (isDone) gaps.unshift(`<span class="done-txt">${fmtS(done[s.name])} 完了</span>`);
+      const state = isDone ? ' done' : late ? ' late' : idx === curIdx ? ' cur' : '';
+      return `${line}<li class="step${state}${s.final ? ' final' : ''}" style="${tone(s, PHASES[s.ph])}">
         <div class="date">${md}</div>
         <div class="body">
           <h3>${s.name}<span class="who ${s.by}">${s.by === 'print' ? '印刷会社' : '弊社'}</span></h3>
           <p>${s.note}</p>
           ${gaps.length ? `<div class="gap">${gaps.map(g => `<span>${g}</span>`).join('')}</div>` : ''}
         </div>
+        <button type="button" class="chk" data-step="${esc(s.name)}" aria-pressed="${isDone}" aria-label="${esc(s.name)}を完了にする"><i></i>${isDone ? '完了' : idx === curIdx ? 'いまここ' : '未'}</button>
       </li>`;
     }).join('');
     const allPrint = list.every(s => s.by === 'print');
     return `<section class="section" style="${allPrint ? '--pc:var(--g);--ps:var(--g-soft)' : `--pc:var(${ph.color});--ps:var(${ph.soft})`}">
       <div class="sec-head">
-        <h2><span>セクション ${i + 1}</span>${ph.name}</h2>
+        <h2><span>セクション ${i + 1}</span>${ph.name}<small class="sec-count">${list.filter(s => done[s.name]).length}/${list.length}</small></h2>
         <div class="sd"><span>締切</span><b>${withWd(due)}</b></div>
       </div>
       <ol class="steps">${items}</ol>
@@ -478,6 +528,7 @@ function render() {
   const pn = $('pname').value.trim();
   $('printHead').innerHTML = `<h1>${pn ? esc(pn) + ' ' : ''}包材スケジュール</h1><p>商品情報確定 <b>${fmt(start)}</b> → 入稿 <b>${fmt(submit)}</b> → 納品 <b>${fmt(end)}</b></p>`;
   lastPlan = { start, submit, end };
+  renderProgress(steps);
 }
 
 document.querySelectorAll('input').forEach(i => {
@@ -495,6 +546,13 @@ const loadH = () => { try { return JSON.parse(localStorage.getItem(HKEY)) || [];
 const saveH = h => { try { localStorage.setItem(HKEY, JSON.stringify(h)); return true; } catch (e) { return false; } };
 const esc = t => t.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+function hstat(it) {
+  const r = computeFor(it.mode, it.base, it.shift);
+  const st = status(r.steps, it.done || {});
+  const pct = Math.round(st.n / st.total * 100);
+  const label = !st.cur ? '完了' : st.late.length ? `<em class="h-late">遅れ ${st.late.length}</em> ${st.cur.short}` : `いま：${st.cur.short}`;
+  return `<span class="h-pg"><span class="bar"><i style="width:${pct}%"></i></span><span class="h-st">${label}</span><span class="h-n">${st.n}/${st.total}</span></span>`;
+}
 function renderHistory() {
   const h = loadH();
   const cur = $('pname').value.trim();
@@ -503,9 +561,52 @@ function renderHistory() {
     <button type="button" class="open" data-i="${i}">
       <b>${esc(it.name)}</b>
       <span>確定 <i>${fmtS(it.start)}</i> → 入稿 <i>${fmtS(it.submit)}</i> → 納品 <i>${fmt(it.end)}</i></span>
+      ${hstat(it)}
     </button>
     <button type="button" class="del" data-i="${i}" aria-label="${esc(it.name)}を削除">削除</button>
   </li>`).join('');
+}
+
+// 進み具合のまとめ：何工程終わったか、いまの工程、遅れている工程
+function status(steps, d) {
+  const n = steps.filter(s => d[s.name]).length;
+  const cur = steps.find(s => !d[s.name]);
+  const late = steps.filter(s => !d[s.name] && s.due < today);
+  return { n, total: steps.length, cur, late };
+}
+function renderProgress(steps) {
+  const st = status(steps, done);
+  const pct = Math.round(st.n / st.total * 100);
+  const head = !st.cur ? '<b>すべて完了</b>'
+    : `いまの工程 <b>${st.cur.name}</b>（${st.cur.by === 'print' ? '印刷会社' : '弊社'}・締切 ${fmtS(st.cur.due)}）`;
+  $('progress').innerHTML = `<div class="pg-top"><span class="pg-cur">${head}</span><span class="pg-n"><b>${st.n}</b> / ${st.total} 完了</span></div>
+    <div class="bar"><i style="width:${pct}%"></i></div>
+    ${st.late.length ? `<div class="pg-late">遅れ：${st.late.map(s => `${s.name}（${today - s.due}日）`).join('、')}</div>` : ''}`;
+}
+
+// チェックは押したその場で保存する。商品名が無いと残せないので、先に入れてもらう
+$('list').addEventListener('click', e => {
+  const b = e.target.closest('.chk');
+  if (!b) return;
+  if (!$('pname').value.trim()) { $('pname').focus(); flash('チェックを残すには、先に商品名を入れてください'); return; }
+  const k = b.dataset.step;
+  if (done[k]) delete done[k]; else done[k] = today;
+  render();
+  persist(false);
+});
+
+function persist(loud) {
+  const name = $('pname').value.trim();
+  if (!name || !lastPlan) return false;
+  const item = { name, mode: val('mode'), base: els.base.value, shift: els.shift.checked, ...lastPlan, done, at: Date.now() };
+  const h = loadH();
+  const i = h.findIndex(it => it.name === name);
+  // 保存ボタンは先頭へ、チェックは並びを変えない（押すたびに一覧が動くと押しにくい）
+  if (i >= 0 && !loud) h[i] = item; else { if (i >= 0) h.splice(i, 1); h.unshift(item); }
+  const ok = saveH(h);
+  if (loud) flash(ok ? `「${name}」を保存しました` : 'このブラウザでは保存できませんでした');
+  renderHistory();
+  return ok;
 }
 
 function flash(msg) {
@@ -517,12 +618,11 @@ function flash(msg) {
 $('save').addEventListener('click', () => {
   const name = $('pname').value.trim();
   if (!name) { $('pname').focus(); flash('商品名を入れてください'); return; }
-  if (!lastPlan) return;
-  const item = { name, mode: val('mode'), base: els.base.value, shift: els.shift.checked, ...lastPlan, at: Date.now() };
-  const h = loadH().filter(it => it.name !== name);
-  h.unshift(item);
-  flash(saveH(h) ? `「${name}」を保存しました` : 'このブラウザでは保存できませんでした');
-  renderHistory();
+  // 同じ名前の商品があれば、その完了チェックを引きつぐ
+  const prev = loadH().find(it => it.name === name);
+  if (prev && prev.done && !Object.keys(done).length) done = prev.done;
+  persist(true);
+  render();
 });
 
 $('history').addEventListener('click', e => {
@@ -541,13 +641,19 @@ $('history').addEventListener('click', e => {
     (it.mode === 'fwd' ? $('modeFwd') : $('modeBack')).checked = true;
     els.base.value = it.base;
     els.shift.checked = it.shift;
+    done = it.done || {};
     render();
     // スマホでは履歴が上にあるので、読みこんだスケジュールのところまで送る
     if (matchMedia('(max-width: 900px)').matches) document.querySelector('.main').scrollIntoView({ behavior: 'smooth' });
   }
   renderHistory();
 });
-$('pname').addEventListener('input', renderHistory);
+$('pname').addEventListener('input', () => {
+  const it = loadH().find(x => x.name === $('pname').value.trim());
+  done = it ? (it.done || {}) : {};
+  render();
+  renderHistory();
+});
 // 印刷ダイアログの「PDFとして保存」で書き出す。ファイル名に商品名が入るよう、そのあいだだけ題名を変える
 $('pdf').addEventListener('click', () => {
   const t = document.title;
@@ -564,6 +670,7 @@ $('newItem').addEventListener('click', () => {
   $('modeBack').checked = true;
   els.base.value = iso(backToWeekday(today + 90));
   els.shift.checked = true;
+  done = {};
   render();
   renderHistory();
   $('pname').focus();
@@ -592,7 +699,7 @@ function renderCal(steps, start, end) {
         const st = tone(s, ph);
         return cont
           ? `<div class="ev cont" style="${st}" aria-hidden="true"></div>`
-          : `<div class="ev${s.final ? ' final' : ''}" style="${st}" title="${s.name}">${s.short}</div>`;
+          : `<div class="ev${s.final ? ' final' : ''}${done[s.name] ? ' done' : (s.due < today ? ' late' : '')}" style="${st}" title="${s.name}">${done[s.name] ? '✓ ' : ''}${s.short}</div>`;
       }).join('');
       const cls = ['day', isWe(n) ? 'we' : '', n === today ? 'today' : '', n < today ? 'past' : ''].filter(Boolean).join(' ');
       cells += `<div class="${cls}"><span class="n">${n - d1 + 1}</span>${evs}</div>`;
