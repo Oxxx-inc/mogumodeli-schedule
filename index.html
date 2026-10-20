@@ -129,6 +129,37 @@ input[type="date"]:focus-visible { outline: 2px solid var(--c); outline-offset: 
 }
 .today::after { content: ""; flex: 1; border-top: 2px dashed var(--warn); }
 
+/* 表示の切り替え（一覧／カレンダー） */
+.view-seg { max-width: 280px; }
+
+/* カレンダー：締切の日だけにセクションの色の札を置き、数字はほかと同じく黒の DIN */
+.cal { display: grid; gap: 16px; }
+.month { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 14px; min-width: 0; }
+.month h2 { margin: 0 0 10px; color: var(--title); font-size: 15px; font-weight: 700; }
+.month h2 b { font-family: var(--mono); color: var(--num); font-size: 20px; margin-right: 2px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--rule); border-left: 1px solid var(--rule); }
+.cal-grid .dow { font-size: 11px; font-weight: 700; color: var(--mute); text-align: center; padding: 4px 0; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); background: var(--bg); }
+.cal-grid .dow.su, .cal-grid .dow.sa { color: var(--warn); }
+.day { min-height: 84px; padding: 4px; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.day.out { background: var(--bg); }
+.day.we { background: color-mix(in srgb, var(--bg) 60%, var(--paper)); }
+.day .n { font-family: var(--mono); font-size: 15px; font-weight: 700; color: var(--num); line-height: 1.2; }
+.day.out .n { visibility: hidden; }
+.day.we .n { color: var(--mute); }
+.day.today { box-shadow: inset 0 0 0 2px var(--warn); }
+.day.today .n::after { content: "今日"; font-family: var(--font); font-size: 10px; color: var(--warn); margin-left: 4px; }
+.ev {
+  font-size: 11px; font-weight: 700; line-height: 1.3; color: var(--ink);
+  background: var(--ps); border-left: 3px solid var(--pc); border-radius: 3px; padding: 2px 4px;
+  overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+}
+.ev.cont { color: transparent; height: 8px; padding: 0; }
+.ev.final { box-shadow: inset 0 0 0 1.5px var(--pc); }
+.day.past .ev { opacity: .55; }
+.cal-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--mute); }
+.cal-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cal-legend i { width: 12px; height: 12px; border-radius: 2px; background: var(--ps); border-left: 3px solid var(--pc); }
+
 .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 button {
   font: 700 14px var(--font); color: var(--paper); background: var(--ink); border: 0; border-radius: 6px;
@@ -141,6 +172,11 @@ textarea#copy-fallback { width: 100%; min-height: 160px; font: 13px var(--mono);
 footer { font-size: 12px; color: var(--mute); }
 
 @media (max-width: 560px) {
+  .month { padding: 10px 8px; }
+  .day { min-height: 64px; padding: 2px; }
+  .day .n { font-size: 13px; }
+  .ev { font-size: 9.5px; padding: 1px 2px; border-left-width: 2px; }
+  .day.today .n::after { display: none; }
   .form { grid-template-columns: 1fr; }
   .step { grid-template-columns: 86px 1fr; }
   .date .md { font-size: 26px; }
@@ -174,7 +210,13 @@ footer { font-size: 12px; color: var(--mute); }
 
   <div id="alert" class="alerts" aria-live="polite" hidden></div>
 
+  <div class="seg view-seg" role="radiogroup" aria-label="表示">
+    <label><input type="radio" name="view" id="viewList" value="list" checked>一覧</label>
+    <label><input type="radio" name="view" id="viewCal" value="cal">カレンダー</label>
+  </div>
+
   <div id="list" class="list"></div>
+  <div id="cal" class="cal" hidden></div>
 
   <div class="actions">
     <button type="button" id="copy">テキストでコピー</button>
@@ -196,21 +238,21 @@ const PHASES = {
 // 白身魚フライの実績の日付を「納品日から何日前か」に直したもの（9/3〜10/30 の57日）
 const TOTAL = 57;
 const STEPS = [
-  { name: '入稿データ作成・提出、色見本手配', at: -57, ph: 'c',
+  { name: '入稿データ作成・提出、色見本手配', at: -57, short: '入稿・色見本', ph: 'c',
     note: 'デザインとカラー指定（DIC等）を確定して入稿データを提出。色見本を手配・発送する。' },
-  { name: '版下提出', at: -49, ph: 'm',
+  { name: '版下提出', at: -49, short: '版下提出', ph: 'm',
     note: 'メーカーが入稿データから版下を起こして提出。文字・レイアウト・表示内容を確認する。' },
-  { name: '色校正出稿（到着）', at: -31, ph: 'm',
+  { name: '色校正出稿（到着）', at: -31, short: '色校正 到着', ph: 'm',
     note: '色校正が届く。色見本と見比べて、色味の調整を指示する。' },
-  { name: '校了', at: -25, ph: 'm',
+  { name: '校了', at: -25, short: '校了', ph: 'm',
     note: '色味の調整を終えて最終確認。ここから先は修正できない。' },
-  { name: '校正刷り確認', at: -17, ph: 'y',
+  { name: '校正刷り確認', at: -17, short: '校正刷り確認', ph: 'y',
     note: '本機での校正刷りを確認する。' },
-  { name: '印刷', at: -10, ph: 'y',
+  { name: '印刷', at: -10, short: '印刷', ph: 'y',
     note: '本印刷。' },
-  { name: '加工（ラミネート・スリット）', from: -8, at: -4, ph: 'y',
+  { name: '加工（ラミネート・スリット）', from: -8, at: -4, short: 'ラミ・スリット加工', ph: 'y',
     note: 'ラミネート加工とスリット加工。' },
-  { name: '包材納品完了', at: 0, ph: 'y', final: true,
+  { name: '包材納品完了', at: 0, short: '包材納品', ph: 'y', final: true,
     note: '包材が納品される。' },
 ];
 
@@ -307,6 +349,8 @@ function render() {
     </section>`;
   }).join('');
 
+
+  renderCal(steps, start, end);
   lastText = [
     '【モグモデリ 包材スケジュール】',
     `入稿 ${withWd(start)} → 納品 ${withWd(end)}`,
@@ -333,6 +377,55 @@ $('copy').addEventListener('click', () => {
     navigator.clipboard.writeText(lastText).then(done, fallback);
   } catch (e) { fallback(); }
 });
+
+
+// カレンダー：入稿の月から納品の月までを、日曜はじまりの月ごとのマスで並べる
+function renderCal(steps, start, end) {
+  const byDay = {};
+  const put = (n, ev) => (byDay[n] = byDay[n] || []).push(ev);
+  steps.forEach(s => {
+    if (s.from != null) {
+      for (let n = s.from; n <= s.due; n++) put(n, { s, cont: n !== s.from });
+    } else put(s.due, { s });
+  });
+  const first = fromDay(start), last = fromDay(end);
+  let y = first.getUTCFullYear(), m = first.getUTCMonth();
+  const months = [];
+  while (y < last.getUTCFullYear() || (y === last.getUTCFullYear() && m <= last.getUTCMonth())) {
+    const d1 = Math.round(Date.UTC(y, m, 1) / DAY);
+    const dN = Math.round(Date.UTC(y, m + 1, 0) / DAY);
+    let cells = WD.split('').map((w, i) => `<div class="dow${i === 0 ? ' su' : i === 6 ? ' sa' : ''}">${w}</div>`).join('');
+    for (let i = 0; i < wd(d1); i++) cells += '<div class="day out"><span class="n">0</span></div>';
+    for (let n = d1; n <= dN; n++) {
+      const evs = (byDay[n] || []).map(({ s, cont }) => {
+        const ph = PHASES[s.ph];
+        const st = `--pc:var(${ph.color});--ps:var(${ph.soft})`;
+        return cont
+          ? `<div class="ev cont" style="${st}" aria-hidden="true"></div>`
+          : `<div class="ev${s.final ? ' final' : ''}" style="${st}" title="${s.name}">${s.short}</div>`;
+      }).join('');
+      const cls = ['day', isWe(n) ? 'we' : '', n === today ? 'today' : '', n < today ? 'past' : ''].filter(Boolean).join(' ');
+      cells += `<div class="${cls}"><span class="n">${n - d1 + 1}</span>${evs}</div>`;
+    }
+    const tail = (7 - ((wd(d1) + dN - d1 + 1) % 7)) % 7;
+    for (let i = 0; i < tail; i++) cells += '<div class="day out"><span class="n">0</span></div>';
+    months.push(`<section class="month"><h2><b>${m + 1}</b>月 <span style="font-family:var(--mono);color:var(--mute);font-size:13px">${y}</span></h2><div class="cal-grid">${cells}</div></section>`);
+    if (++m > 11) { m = 0; y++; }
+  }
+  const legend = `<div class="cal-legend">${Object.values(PHASES).map(ph => `<span style="--pc:var(${ph.color});--ps:var(${ph.soft})"><i></i>${ph.name}</span>`).join('')}</div>`;
+  $('cal').innerHTML = legend + months.join('');
+}
+
+// 表示の切り替え。どちらで見ていたかは、その端末にだけ覚えておく
+function applyView() {
+  const v = val('view');
+  $('list').hidden = v !== 'list';
+  $('cal').hidden = v !== 'cal';
+  try { localStorage.setItem('mogu_view', v); } catch (e) {}
+}
+try { if (localStorage.getItem('mogu_view') === 'cal') $('viewCal').checked = true; } catch (e) {}
+document.querySelectorAll('input[name="view"]').forEach(i => i.addEventListener('change', applyView));
+applyView();
 
 render();
 </script>
