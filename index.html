@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>モグモデリ 包材スケジュール</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Barlow:wght@500;600;700&display=swap">
 <style>
 /* 刷版の工程表：CMYK の3色で「デザイン／版下・校正／印刷・加工」を塗り分けた、締切だけの一覧 */
 :root {
@@ -24,7 +24,8 @@
   --warn-soft: #fff1e6;
   --ok: #15803d;
   --font: "Zen Kaku Gothic New", "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  /* 数字は DIN。Mac・iPhone は本体の DIN Alternate、それ以外は形の近い Barlow で出す */
+  --mono: "DIN Alternate", "DIN 2014", "DIN Next LT Pro", "D-DIN", "Barlow", "Zen Kaku Gothic New", sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
