@@ -56,7 +56,15 @@ body {
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: 28px 56px;
 }
-.wrap { max-width: 760px; margin: 0 auto; display: grid; gap: 20px; }
+.wrap { max-width: 1160px; margin: 0 auto; display: grid; gap: 20px; }
+/* 左1/3に保存した商品、右2/3に選んだ商品のスケジュール */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+.main { display: grid; gap: 20px; min-width: 0; }
+.history { position: sticky; top: calc(16px + env(safe-area-inset-top, 0px)); max-height: calc(100vh - 32px); overflow-y: auto; }
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .history { position: static; max-height: none; }
+}
 .list { display: grid; gap: 16px; min-width: 0; }
 
 /* 見出し：トンボと色玉 */
@@ -177,16 +185,19 @@ button {
 button:focus-visible { outline: 2px solid var(--c); outline-offset: 2px; }
 .saved-msg { font-size: 12px; color: var(--ok); }
 .form .full { grid-column: 1 / -1; }
-.history h2 { margin: 0 0 8px; color: var(--title); font-size: 14px; font-weight: 700; }
+.history-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.history-head .new { background: none; color: var(--ink); border: 1px solid var(--rule); font-size: 12px; padding: 4px 10px; }
+.history h2 { margin: 0; color: var(--title); font-size: 14px; font-weight: 700; }
 .history ul { list-style: none; margin: 0; padding: 0; }
 .history li { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--rule); }
 .history li:first-child { border-top: 0; }
 .history .open {
-  flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px; text-align: left;
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left;
+  border-left: 3px solid transparent;
   background: none; color: var(--ink); padding: 10px 4px; border-radius: 4px; font-weight: 500;
 }
 .history .open:hover { background: var(--bg); }
-.history li.cur .open { background: var(--c-soft); }
+.history li.cur .open { background: var(--c-soft); border-left-color: var(--c); }
 .history .open b { font-size: 15px; font-weight: 700; }
 .history .open span { font-size: 12px; color: var(--mute); }
 .history .open span i { font-style: normal; font-family: var(--mono); color: var(--num); font-weight: 700; font-size: 13px; }
@@ -216,51 +227,58 @@ footer { font-size: 12px; color: var(--mute); }
     <h1>モグモデリ 包材スケジュール</h1>
   </header>
 
-  <section class="panel">
-    <div class="form">
-      <div class="field full">
-        <label class="label" for="pname">商品名</label>
-        <div class="name-row">
-          <input type="text" id="pname" placeholder="例：白身魚フライ" autocomplete="off">
-          <button type="button" id="save">保存</button>
+  <div class="layout">
+    <aside class="panel history">
+      <div class="history-head">
+        <h2>保存した商品</h2>
+        <button type="button" class="new" id="newItem">＋ 新しい商品</button>
+      </div>
+      <ul id="history"></ul>
+      <p class="empty" id="historyEmpty">まだありません。商品名を入れて「保存」を押すと、ここに残ります。</p>
+    </aside>
+
+    <main class="main">
+    <section class="panel">
+      <div class="form">
+        <div class="field full">
+          <label class="label" for="pname">商品名</label>
+          <div class="name-row">
+            <input type="text" id="pname" placeholder="例：白身魚フライ" autocomplete="off">
+            <button type="button" id="save">保存</button>
+          </div>
+          <span class="saved-msg" id="savedMsg" hidden></span>
         </div>
-        <span class="saved-msg" id="savedMsg" hidden></span>
-      </div>
-      <div class="field">
-        <span class="label">どちらから決める</span>
-        <div class="seg" role="radiogroup" aria-label="計算のしかた">
-          <label><input type="radio" name="mode" id="modeBack" value="back" checked>納品日<small>から逆算</small></label>
-          <label><input type="radio" name="mode" id="modeFwd" value="fwd">商品情報の確定日<small>から順算</small></label>
+        <div class="field">
+          <span class="label">どちらから決める</span>
+          <div class="seg" role="radiogroup" aria-label="計算のしかた">
+            <label><input type="radio" name="mode" id="modeBack" value="back" checked>納品日<small>から逆算</small></label>
+            <label><input type="radio" name="mode" id="modeFwd" value="fwd">商品情報の確定日<small>から順算</small></label>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label" for="base" id="baseLabel">包材納品日</label>
+          <input type="date" id="base">
+          <label class="check"><input type="checkbox" id="shift" checked>土日に当たる締切は、前の金曜に前倒しする</label>
         </div>
       </div>
-      <div class="field">
-        <label class="label" for="base" id="baseLabel">包材納品日</label>
-        <input type="date" id="base">
-        <label class="check"><input type="checkbox" id="shift" checked>土日に当たる締切は、前の金曜に前倒しする</label>
-      </div>
+    </section>
+
+    <div id="alert" class="alerts" aria-live="polite" hidden></div>
+
+    <div class="seg view-seg" role="radiogroup" aria-label="表示">
+      <label><input type="radio" name="view" id="viewList" value="list" checked>一覧</label>
+      <label><input type="radio" name="view" id="viewCal" value="cal">カレンダー</label>
     </div>
-  </section>
 
-  <section class="panel history">
-    <h2>保存した商品</h2>
-    <ul id="history"></ul>
-    <p class="empty" id="historyEmpty">まだありません。商品名を入れて「保存」を押すと、ここに残ります。</p>
-  </section>
+    <div id="list" class="list"></div>
+    <div id="cal" class="cal" hidden></div>
 
-  <div id="alert" class="alerts" aria-live="polite" hidden></div>
 
-  <div class="seg view-seg" role="radiogroup" aria-label="表示">
-    <label><input type="radio" name="view" id="viewList" value="list" checked>一覧</label>
-    <label><input type="radio" name="view" id="viewCal" value="cal">カレンダー</label>
+    <footer>
+      日数は「白身魚フライ」の実績（入稿 9.3 → 納品 10.30）の間隔をそのまま当てはめたものです。商品情報の確定から入稿までは、裏面と商品名の差し替えに3営業日を見ています。祝日・お盆・年末年始は見ていないので、その時期にかかる場合は余裕を足してください。
+    </footer>
+    </main>
   </div>
-
-  <div id="list" class="list"></div>
-  <div id="cal" class="cal" hidden></div>
-
-
-  <footer>
-    日数は「白身魚フライ」の実績（入稿 9.3 → 納品 10.30）の間隔をそのまま当てはめたものです。商品情報の確定から入稿までは、裏面と商品名の差し替えに3営業日を見ています。祝日・お盆・年末年始は見ていないので、その時期にかかる場合は余裕を足してください。
-  </footer>
 </div>
 
 <script>
@@ -476,11 +494,22 @@ $('history').addEventListener('click', e => {
     els.base.value = it.base;
     els.shift.checked = it.shift;
     render();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // スマホでは履歴が上にあるので、読みこんだスケジュールのところまで送る
+    if (matchMedia('(max-width: 900px)').matches) document.querySelector('.main').scrollIntoView({ behavior: 'smooth' });
   }
   renderHistory();
 });
 $('pname').addEventListener('input', renderHistory);
+// 新しい商品：名前を空にして、開いたときと同じ例の日付に戻す
+$('newItem').addEventListener('click', () => {
+  $('pname').value = '';
+  $('modeBack').checked = true;
+  els.base.value = iso(backToWeekday(today + 90));
+  els.shift.checked = true;
+  render();
+  renderHistory();
+  $('pname').focus();
+});
 
 // カレンダー：入稿の月から納品の月までを、日曜はじまりの月ごとのマスで並べる
 function renderCal(steps, start, end) {
