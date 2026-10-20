@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>モグモデリ 包材スケジュール</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* 刷版の工程表：CMYK の3色で「デザイン／版下・校正／印刷・加工」を塗り分けた、締切だけの一覧 */
+:root {
+  --bg: #f3f4f2;
+  --paper: #ffffff;
+  --ink: #1b1f22;
+  --mute: #666e73;
+  --rule: #d9dcd8;
+  --c: #0095c8;   /* シアン＝デザイン〜入稿 */
+  --m: #d6246e;   /* マゼンタ＝版下〜校了 */
+  --y: #c99700;   /* イエロー＝印刷・加工 */
+  --c-soft: #e2f3fa;
+  --m-soft: #fbe5ee;
+  --y-soft: #fdf3d4;
+  --warn: #c2410c;
+  --warn-soft: #fff1e6;
+  --ok: #15803d;
+  --font: "Zen Kaku Gothic New", "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171a; --paper: #1d2125; --ink: #e9ecea; --mute: #9aa3a8; --rule: #33393e;
+    --c: #3cbde8; --m: #f0598f; --y: #f2c230;
+    --c-soft: #15303b; --m-soft: #3a1a27; --y-soft: #3a3115;
+    --warn: #fb923c; --warn-soft: #3a2314; --ok: #4ade80;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14171a; --paper: #1d2125; --ink: #e9ecea; --mute: #9aa3a8; --rule: #33393e;
+  --c: #3cbde8; --m: #f0598f; --y: #f2c230;
+  --c-soft: #15303b; --m-soft: #3a1a27; --y-soft: #3a3115;
+  --warn: #fb923c; --warn-soft: #3a2314; --ok: #4ade80;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 56px;
+}
+.wrap { max-width: 760px; margin: 0 auto; display: grid; gap: 20px; }
+.list { display: grid; gap: 16px; min-width: 0; }
+
+/* 見出し：トンボと色玉 */
+header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+h1 { margin: 0; font-size: clamp(22px, 4vw, 30px); font-weight: 900; letter-spacing: .02em; text-wrap: balance; }
+
+.panel { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 20px; min-width: 0; }
+
+/* 入力 */
+.form { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 20px; align-items: start; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.label { font-size: 12px; font-weight: 700; letter-spacing: .08em; color: var(--mute); }
+.seg { display: flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+.seg label { flex: 1; text-align: center; padding: 9px 8px; cursor: pointer; font-size: 14px; font-weight: 500; position: relative; }
+.seg label + label { border-left: 1px solid var(--rule); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label:has(input:checked) { background: var(--ink); color: var(--paper); }
+.seg label:has(input:focus-visible) { outline: 2px solid var(--c); outline-offset: -3px; }
+.seg small { display: block; font-size: 11px; opacity: .75; font-weight: 400; }
+input[type="date"] {
+  font: 600 16px var(--mono); color: var(--ink); background: var(--paper);
+  border: 1px solid var(--rule); border-radius: 6px; padding: 8px 10px; width: 100%;
+}
+input[type="date"]:focus-visible { outline: 2px solid var(--c); outline-offset: 1px; }
+.check { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; cursor: pointer; }
+.check input { margin-top: 3px; accent-color: var(--ink); }
+
+.alerts { display: grid; gap: 10px; }
+.alert { padding: 12px 16px; border-radius: 6px; font-size: 14px; background: var(--warn-soft); color: var(--warn); display: grid; gap: 2px; }
+.alert b { font-size: 15px; }
+
+/* 締切の一覧 */
+.section { display: grid; min-width: 0; }
+.sec-head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px 16px; flex-wrap: wrap;
+  padding: 10px 16px; background: var(--ps); border-left: 6px solid var(--pc); border-radius: 6px 6px 0 0;
+}
+.sec-head h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.sec-head h2 span { color: var(--pc); font-size: 12px; letter-spacing: .08em; margin-right: 8px; }
+/* セクションの締切：色の帯の上に白い枠を置いて、見出しの中で目に入るようにする */
+.sec-head .sd {
+  display: inline-flex; align-items: center; gap: 8px; font-size: 12px;
+  background: var(--paper); border: 1px solid var(--pc); border-radius: 4px; padding: 3px 10px 3px 4px;
+}
+.sec-head .sd span { background: var(--pc); color: var(--paper); font-weight: 700; padding: 1px 8px; border-radius: 3px; letter-spacing: .08em; }
+.sec-head .sd b { font-family: var(--mono); color: var(--ink); font-size: 15px; font-weight: 600; }
+
+.steps { list-style: none; margin: 0; padding: 0; background: var(--paper); border: 1px solid var(--rule); border-top: 0; border-radius: 0 0 6px 6px; }
+.step { display: grid; grid-template-columns: 92px 1fr auto; gap: 4px 16px; padding: 16px; border-top: 1px solid var(--rule); align-items: start; }
+.steps > li:first-child { border-top: 0; }
+/* 日付はセクションの色を薄く敷いた札にして、一覧の中でいちばん先に目に入るようにする */
+.step { grid-template-columns: 112px 1fr; }
+.date {
+  font-family: var(--mono); font-variant-numeric: tabular-nums; line-height: 1.15;
+  background: var(--ps); border-radius: 6px; padding: 10px 8px; text-align: center;
+}
+.date .md { font-size: 28px; font-weight: 600; color: var(--ink); }
+.date .md.range { font-size: 18px; }
+.date .wd { font-family: var(--font); font-size: 13px; font-weight: 700; color: var(--pc); margin-top: 4px; }
+.step.past .date { background: var(--bg); }
+.step.final .date { background: var(--pc); }
+.step.final .date .md, .step.final .date .wd { color: var(--paper); }
+.date .wd.we { color: var(--warn); }
+.body { min-width: 0; }
+.body h3 { margin: 0; font-size: 16px; font-weight: 700; }
+.body p { margin: 4px 0 0; font-size: 13px; color: var(--mute); }
+.body .gap { margin-top: 6px; font-size: 12px; color: var(--mute); display: flex; gap: 4px 12px; flex-wrap: wrap; }
+.body .gap .shift { color: var(--warn); }
+.step.past .date .md, .step.past .date .wd, .step.past h3 { color: var(--mute); }
+.today {
+  display: flex; align-items: center; gap: 10px; padding: 6px 16px; font-size: 12px; font-weight: 700; color: var(--warn);
+  border-top: 1px solid var(--rule); background: var(--warn-soft);
+}
+.today::after { content: ""; flex: 1; border-top: 2px dashed var(--warn); }
+
+.actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+button {
+  font: 700 14px var(--font); color: var(--paper); background: var(--ink); border: 0; border-radius: 6px;
+  padding: 10px 16px; cursor: pointer;
+}
+button:focus-visible { outline: 2px solid var(--c); outline-offset: 2px; }
+#copied { font-size: 13px; color: var(--ok); }
+textarea#copy-fallback { width: 100%; min-height: 160px; font: 13px var(--mono); background: var(--paper); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; padding: 10px; }
+
+footer { font-size: 12px; color: var(--mute); }
+
+@media (max-width: 560px) {
+  .form { grid-template-columns: 1fr; }
+  .step { grid-template-columns: 86px 1fr; }
+  .date .md { font-size: 22px; }
+  .date .md.range { font-size: 15px; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>モグモデリ 包材スケジュール</h1>
+  </header>
+
+  <section class="panel">
+    <div class="form">
+      <div class="field">
+        <span class="label">どちらから決める</span>
+        <div class="seg" role="radiogroup" aria-label="計算のしかた">
+          <label><input type="radio" name="mode" id="modeBack" value="back" checked>納品日<small>から逆算</small></label>
+          <label><input type="radio" name="mode" id="modeFwd" value="fwd">入稿日<small>から順算</small></label>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label" for="base" id="baseLabel">包材納品日</label>
+        <input type="date" id="base">
+        <label class="check"><input type="checkbox" id="shift" checked>土日に当たる締切は、前の金曜に前倒しする</label>
+      </div>
+    </div>
+  </section>
+
+  <div id="alert" class="alerts" aria-live="polite" hidden></div>
+
+  <div id="list" class="list"></div>
+
+  <div class="actions">
+    <button type="button" id="copy">テキストでコピー</button>
+    <span id="copied" hidden>コピーしました</span>
+  </div>
+  <textarea id="copy-fallback" hidden readonly aria-label="コピー用テキスト"></textarea>
+
+  <footer>
+    日数は「白身魚フライ」の実績（入稿 9.3 → 納品 10.30）の間隔をそのまま当てはめたものです。祝日・お盆・年末年始は見ていないので、その時期にかかる場合は余裕を足してください。
+  </footer>
+</div>
+
+<script>
+const PHASES = {
+  c: { name: 'デザイン〜入稿・色見本', color: '--c', soft: '--c-soft' },
+  m: { name: '版下〜色校正・校了', color: '--m', soft: '--m-soft' },
+  y: { name: '印刷・加工・納品', color: '--y', soft: '--y-soft' },
+};
+// 白身魚フライの実績の日付を「納品日から何日前か」に直したもの（9/3〜10/30 の57日）
+const TOTAL = 57;
+const STEPS = [
+  { name: '入稿データ作成・提出、色見本手配', at: -57, ph: 'c',
+    note: 'デザインとカラー指定（DIC等）を確定して入稿データを提出。色見本を手配・発送する。' },
+  { name: '版下提出', at: -49, ph: 'm',
+    note: 'メーカーが入稿データから版下を起こして提出。文字・レイアウト・表示内容を確認する。' },
+  { name: '色校正出稿（到着）', at: -31, ph: 'm',
+    note: '色校正が届く。色見本と見比べて、色味の調整を指示する。' },
+  { name: '校了', at: -25, ph: 'm',
+    note: '色味の調整を終えて最終確認。ここから先は修正できない。' },
+  { name: '校正刷り確認', at: -17, ph: 'y',
+    note: '本機での校正刷りを確認する。' },
+  { name: '印刷', at: -10, ph: 'y',
+    note: '本印刷。' },
+  { name: '加工（ラミネート・スリット）', from: -8, at: -4, ph: 'y',
+    note: 'ラミネート加工とスリット加工。' },
+  { name: '包材納品完了', at: 0, ph: 'y', final: true,
+    note: '包材が納品される。' },
+];
+
+// 日付は「1970-01-01 からの日数」の整数で持つ。Date のまま足し引きすると
+// タイムゾーンや夏時間で1日ずれることがあるため。
+const DAY = 86400000;
+const toDay = s => { const [y, m, d] = s.split('-').map(Number); return Math.round(Date.UTC(y, m - 1, d) / DAY); };
+const fromDay = n => new Date(n * DAY);
+const iso = n => fromDay(n).toISOString().slice(0, 10);
+const WD = '日月火水木金土';
+const wd = n => fromDay(n).getUTCDay();
+const isWe = n => wd(n) === 0 || wd(n) === 6;
+const fmt = n => { const d = fromDay(n); return `${d.getUTCFullYear()}.${d.getUTCMonth() + 1}.${d.getUTCDate()}`; };
+const fmtS = n => { const d = fromDay(n); return `${d.getUTCMonth() + 1}.${d.getUTCDate()}`; };
+const withWd = n => `${fmt(n)}（${WD[wd(n)]}）`;
+const now = new Date();
+const today = Math.round(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / DAY);
+
+// 締切が土日なら前の金曜へ。後ろにずらすと後工程の日数が削られるので、前倒しにする。
+const backToWeekday = n => { const w = wd(n); return w === 6 ? n - 1 : w === 0 ? n - 2 : n; };
+
+const $ = id => document.getElementById(id);
+const els = { base: $('base'), shift: $('shift'), baseLabel: $('baseLabel') };
+
+// 開いたときは、今日から約3ヶ月後の金曜を納品日にした例を出しておく
+els.base.value = iso(backToWeekday(today + 90));
+
+const val = name => document.querySelector(`input[name="${name}"]:checked`).value;
+let lastText = '';
+
+function compute() {
+  if (!els.base.value) return null;
+  const mode = val('mode');
+  const base = toDay(els.base.value);
+  const end = mode === 'back' ? base : base + TOTAL;
+  const fix = n => (els.shift.checked ? backToWeekday(n) : n);
+  const steps = STEPS.map(s => {
+    // 納品日（逆算）と入稿日（順算）は入力そのものなので動かさない
+    const pinned = (mode === 'back' && s.final) || (mode === 'fwd' && s.at === -TOTAL);
+    const raw = end + s.at;
+    const due = pinned ? raw : fix(raw);
+    const from = s.from != null ? fix(end + s.from) : null;
+    return { ...s, due, from, shifted: due !== raw };
+  });
+  return { mode, end, start: end - TOTAL, steps };
+}
+
+function render() {
+  const r = compute();
+  if (!r) return;
+  const { mode, end, start, steps } = r;
+  els.baseLabel.textContent = mode === 'back' ? '包材納品日' : '入稿日';
+
+  const alerts = [];
+  if (start < today) {
+    const next = steps.find(s => s.due >= today);
+    alerts.push(`<div class="alert"><b>この納品日だと間に合いません</b><span>入稿の締切 ${withWd(start)} を${today - start}日過ぎています。${next ? `今ごろ「${next.name}」の手前まで進んでいる必要があります。` : ''}今日入稿した場合の最短の納品日は ${withWd(today + TOTAL)} です。</span></div>`);
+  }
+  if (isWe(end)) {
+    alerts.push(`<div class="alert"><b>納品日が${WD[wd(end)]}曜日です</b><span>受け取れるか確認してください。</span></div>`);
+  }
+  $('alert').innerHTML = alerts.join('');
+  $('alert').hidden = !alerts.length;
+
+  const nextIdx = steps.findIndex(s => s.due >= today);
+  $('list').innerHTML = Object.entries(PHASES).map(([k, ph], i) => {
+    const list = steps.filter(s => s.ph === k);
+    const due = Math.max(...list.map(s => s.due));
+    const items = list.map(s => {
+      const idx = steps.indexOf(s);
+      // 今日の位置に線を引く（最初の工程より前なら出さない）
+      const line = idx === nextIdx && idx > 0 ? `<li class="today">今日 ${fmtS(today)}（${WD[wd(today)]}）</li>` : '';
+      const md = s.from != null
+        ? `<div class="md range">${fmtS(s.from)}〜<br>${fmtS(s.due)}</div><div class="wd${isWe(s.from) || isWe(s.due) ? ' we' : ''}">${WD[wd(s.from)]}〜${WD[wd(s.due)]}</div>`
+        : `<div class="md">${fmtS(s.due)}</div><div class="wd${isWe(s.due) ? ' we' : ''}">${WD[wd(s.due)]}曜日</div>`;
+      const gaps = [];
+      if (s.from != null) gaps.push(`作業 ${s.due - s.from + 1}日間`);
+      if (s.shifted) gaps.push('<span class="shift">土日のため前倒し</span>');
+      return `${line}<li class="step${s.due < today ? ' past' : ''}${s.final ? ' final' : ''}">
+        <div class="date">${md}</div>
+        <div class="body">
+          <h3>${s.name}</h3>
+          <p>${s.note}</p>
+          ${gaps.length ? `<div class="gap">${gaps.map(g => `<span>${g}</span>`).join('')}</div>` : ''}
+        </div>
+      </li>`;
+    }).join('');
+    return `<section class="section" style="--pc:var(${ph.color});--ps:var(${ph.soft})">
+      <div class="sec-head">
+        <h2><span>セクション ${i + 1}</span>${ph.name}</h2>
+        <div class="sd"><span>締切</span><b>${withWd(due)}</b></div>
+      </div>
+      <ol class="steps">${items}</ol>
+    </section>`;
+  }).join('');
+
+  lastText = [
+    '【モグモデリ 包材スケジュール】',
+    `入稿 ${withWd(start)} → 納品 ${withWd(end)}`,
+    '',
+    ...Object.entries(PHASES).map(([k, ph], i) => {
+      const list = steps.filter(s => s.ph === k);
+      const due = Math.max(...list.map(s => s.due));
+      return [`■ セクション${i + 1} ${ph.name}（〆 ${withWd(due)}）`,
+        ...list.map(s => `・${s.from != null ? `${fmtS(s.from)}〜${fmtS(s.due)}` : fmtS(s.due)}（${WD[wd(s.due)]}） ${s.name}`)].join('\n');
+    }),
+  ].join('\n');
+  $('copy-fallback').value = lastText;
+}
+
+document.querySelectorAll('input').forEach(i => {
+  i.addEventListener('input', render);
+  i.addEventListener('change', render);
+});
+
+$('copy').addEventListener('click', () => {
+  const done = () => { $('copied').hidden = false; setTimeout(() => ($('copied').hidden = true), 1600); };
+  const fallback = () => { const t = $('copy-fallback'); t.hidden = false; t.focus(); t.select(); };
+  try {
+    navigator.clipboard.writeText(lastText).then(done, fallback);
+  } catch (e) { fallback(); }
+});
+
+render();
+</script>
+
+</body>
+</html>
