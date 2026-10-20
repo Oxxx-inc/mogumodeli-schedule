@@ -14,6 +14,7 @@
   --ink: #1b1f22;
   --num: #000000;   /* 日付の数字。いちばん目立たせたいので純黒 */
   --title: #4b5155; /* 見出しは日付より一段引かせる */
+  --date-bg: #ebedec; /* 日付の札の下地。セクションの色は線と曜日だけに残す */
   --mute: #666e73;
   --rule: #d9dcd8;
   --c: #0095c8;   /* シアン＝デザイン〜入稿 */
@@ -31,7 +32,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #14171a; --paper: #1d2125; --ink: #e9ecea; --num: #ffffff; --title: #b4bbbf; --mute: #9aa3a8; --rule: #33393e;
+    --bg: #14171a; --paper: #1d2125; --ink: #e9ecea; --num: #ffffff; --title: #b4bbbf; --date-bg: #2b3034; --mute: #9aa3a8; --rule: #33393e;
     --c: #3cbde8; --m: #f0598f; --y: #f2c230;
     --c-soft: #15303b; --m-soft: #3a1a27; --y-soft: #3a3115;
     --warn: #fb923c; --warn-soft: #3a2314; --ok: #4ade80;
@@ -39,7 +40,7 @@
   }
 }
 :root[data-theme="dark"] {
-  --bg: #14171a; --paper: #1d2125; --ink: #e9ecea; --num: #ffffff; --title: #b4bbbf; --mute: #9aa3a8; --rule: #33393e;
+  --bg: #14171a; --paper: #1d2125; --ink: #e9ecea; --num: #ffffff; --title: #b4bbbf; --date-bg: #2b3034; --mute: #9aa3a8; --rule: #33393e;
   --c: #3cbde8; --m: #f0598f; --y: #f2c230;
   --c-soft: #15303b; --m-soft: #3a1a27; --y-soft: #3a3115;
   --warn: #fb923c; --warn-soft: #3a2314; --ok: #4ade80;
@@ -109,12 +110,11 @@ input[type="date"]:focus-visible { outline: 2px solid var(--c); outline-offset: 
 .step { grid-template-columns: 112px 1fr; }
 .date {
   font-family: var(--mono); font-variant-numeric: tabular-nums; line-height: 1.15;
-  background: var(--ps); border-radius: 6px; padding: 10px 8px; text-align: center;
+  background: var(--date-bg); border-radius: 6px; padding: 10px 8px; text-align: center;
 }
 .date .md { font-size: 32px; font-weight: 700; color: var(--num); }
 .date .md.range { font-size: 21px; }
 .date .wd { font-family: var(--font); font-size: 13px; font-weight: 700; color: var(--pc); margin-top: 4px; }
-.step.past .date { background: var(--bg); }
 .step.final .date { box-shadow: inset 0 0 0 2px var(--pc); }
 .date .wd.we { color: var(--warn); }
 .body { min-width: 0; }
@@ -150,7 +150,7 @@ input[type="date"]:focus-visible { outline: 2px solid var(--c); outline-offset: 
 .day.today .n::after { content: "今日"; font-family: var(--font); font-size: 10px; color: var(--warn); margin-left: 4px; }
 .ev {
   font-size: 11px; font-weight: 700; line-height: 1.3; color: var(--ink);
-  background: var(--ps); border-left: 3px solid var(--pc); border-radius: 3px; padding: 2px 4px;
+  background: var(--date-bg); border-left: 3px solid var(--pc); border-radius: 3px; padding: 2px 4px;
   overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
 }
 .ev.cont { color: transparent; height: 8px; padding: 0; }
