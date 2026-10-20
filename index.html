@@ -471,7 +471,8 @@ function render() {
   els.baseLabel.textContent = mode === 'back' ? '包材納品日' : '商品情報の確定日';
 
   const alerts = [];
-  if (start < today) {
+  // チェックが1つでも付いたら、遅れは進み具合の札で見せる。ここは計画を立てる段階（まだ何も済んでいない）だけの注意
+  if (start < today && !Object.keys(done).length) {
     const next = steps.find(s => s.due >= today);
     alerts.push(`<div class="alert"><b>この納品日だと間に合いません</b><span>商品情報の確定の締切 ${withWd(start)} を${today - start}日過ぎています。${next ? `今ごろ「${next.name}」の手前まで進んでいる必要があります。` : ''}今日商品情報が確定した場合の最短の納品日は ${withWd(addBD(today, SWAP_BD) + TOTAL)} です。</span></div>`);
   }
