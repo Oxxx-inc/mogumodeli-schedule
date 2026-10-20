@@ -149,6 +149,7 @@ input[type="date"]:focus-visible { outline: 2px solid var(--c); outline-offset: 
 .view-seg { flex: 0 1 280px; }
 button.ghost { background: var(--paper); color: var(--ink); border: 1px solid var(--rule); }
 .print-head { display: none; }
+.month h2 .pname { display: none; }
 
 /* カレンダー：締切の日だけにセクションの色の札を置き、数字はほかと同じく黒の DIN */
 .cal { display: grid; gap: 16px; }
@@ -242,6 +243,8 @@ footer { font-size: 12px; color: var(--mute); }
   .print-head p b { font-family: var(--mono); color: var(--num); font-size: 13px; }
   .cal-legend { margin-bottom: 6px; }
   .month { border: 0; padding: 0; break-inside: avoid; break-after: page; }
+  .month h2 .pname { display: inline; font-style: normal; font-size: 16px; color: var(--ink); margin-right: 14px; padding-right: 14px; border-right: 1px solid var(--rule); }
+  .print-head h1 { font-size: 22px !important; }
   .month:last-child { break-after: auto; }
   .day { min-height: 22mm; }
   .day.today { box-shadow: none; }
@@ -547,7 +550,9 @@ $('pname').addEventListener('input', renderHistory);
 $('pdf').addEventListener('click', () => {
   const t = document.title;
   const pn = $('pname').value.trim();
-  document.title = `${pn || 'モグモデリ'} 包材スケジュール`;
+  if (!pn) { $('pname').focus(); flash('PDFに入れる商品名を入れてください'); return; }
+  render();
+  document.title = `${pn} 包材スケジュール`;
   window.addEventListener('afterprint', () => (document.title = t), { once: true });
   window.print();
 });
@@ -592,7 +597,8 @@ function renderCal(steps, start, end) {
     }
     const tail = (7 - ((wd(d1) + dN - d1 + 1) % 7)) % 7;
     for (let i = 0; i < tail; i++) cells += '<div class="day out"><span class="n">0</span></div>';
-    months.push(`<section class="month"><h2><b>${m + 1}</b>月 <span style="font-family:var(--mono);color:var(--mute);font-size:13px">${y}</span></h2><div class="cal-grid">${cells}</div></section>`);
+    const pn = $('pname').value.trim();
+    months.push(`<section class="month"><h2>${pn ? `<em class="pname">${esc(pn)}</em>` : ''}<b>${m + 1}</b>月 <span style="font-family:var(--mono);color:var(--mute);font-size:13px">${y}</span></h2><div class="cal-grid">${cells}</div></section>`);
     if (++m > 11) { m = 0; y++; }
   }
   const legend = `<div class="cal-legend">${Object.values(PHASES).map(ph => `<span style="--pc:var(${ph.color});--ps:var(${ph.soft})"><i></i>${ph.name}</span>`).join('')}<span style="--pc:var(--g);--ps:var(--g-soft)"><i></i>印刷会社の作業</span></div>`;
