@@ -12,6 +12,8 @@
   --bg: #f3f4f2;
   --paper: #ffffff;
   --ink: #1b1f22;
+  --num: #000000;   /* 日付の数字。いちばん目立たせたいので純黒 */
+  --title: #4b5155; /* 見出しは日付より一段引かせる */
   --mute: #666e73;
   --rule: #d9dcd8;
   --c: #0095c8;   /* シアン＝デザイン〜入稿 */
@@ -29,7 +31,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #14171a; --paper: #1d2125; --ink: #e9ecea; --mute: #9aa3a8; --rule: #33393e;
+    --bg: #14171a; --paper: #1d2125; --ink: #e9ecea; --num: #ffffff; --title: #b4bbbf; --mute: #9aa3a8; --rule: #33393e;
     --c: #3cbde8; --m: #f0598f; --y: #f2c230;
     --c-soft: #15303b; --m-soft: #3a1a27; --y-soft: #3a3115;
     --warn: #fb923c; --warn-soft: #3a2314; --ok: #4ade80;
@@ -37,7 +39,7 @@
   }
 }
 :root[data-theme="dark"] {
-  --bg: #14171a; --paper: #1d2125; --ink: #e9ecea; --mute: #9aa3a8; --rule: #33393e;
+  --bg: #14171a; --paper: #1d2125; --ink: #e9ecea; --num: #ffffff; --title: #b4bbbf; --mute: #9aa3a8; --rule: #33393e;
   --c: #3cbde8; --m: #f0598f; --y: #f2c230;
   --c-soft: #15303b; --m-soft: #3a1a27; --y-soft: #3a3115;
   --warn: #fb923c; --warn-soft: #3a2314; --ok: #4ade80;
@@ -57,7 +59,7 @@ body {
 
 /* 見出し：トンボと色玉 */
 header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-h1 { margin: 0; font-size: clamp(22px, 4vw, 30px); font-weight: 900; letter-spacing: .02em; text-wrap: balance; }
+h1 { margin: 0; color: var(--title); font-size: clamp(20px, 3.6vw, 26px); font-weight: 700; letter-spacing: .02em; text-wrap: balance; }
 
 .panel { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 20px; min-width: 0; }
 
@@ -90,7 +92,7 @@ input[type="date"]:focus-visible { outline: 2px solid var(--c); outline-offset: 
   display: flex; justify-content: space-between; align-items: baseline; gap: 8px 16px; flex-wrap: wrap;
   padding: 10px 16px; background: var(--ps); border-left: 6px solid var(--pc); border-radius: 6px 6px 0 0;
 }
-.sec-head h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.sec-head h2 { margin: 0; color: var(--title); font-size: 15px; font-weight: 700; }
 .sec-head h2 span { color: var(--pc); font-size: 12px; letter-spacing: .08em; margin-right: 8px; }
 /* セクションの締切：色の帯の上に白い枠を置いて、見出しの中で目に入るようにする */
 .sec-head .sd {
@@ -98,7 +100,7 @@ input[type="date"]:focus-visible { outline: 2px solid var(--c); outline-offset: 
   background: var(--paper); border: 1px solid var(--pc); border-radius: 4px; padding: 3px 10px 3px 4px;
 }
 .sec-head .sd span { background: var(--pc); color: var(--paper); font-weight: 700; padding: 1px 8px; border-radius: 3px; letter-spacing: .08em; }
-.sec-head .sd b { font-family: var(--mono); color: var(--ink); font-size: 15px; font-weight: 600; }
+.sec-head .sd b { font-family: var(--mono); color: var(--num); font-size: 16px; font-weight: 700; }
 
 .steps { list-style: none; margin: 0; padding: 0; background: var(--paper); border: 1px solid var(--rule); border-top: 0; border-radius: 0 0 6px 6px; }
 .step { display: grid; grid-template-columns: 92px 1fr auto; gap: 4px 16px; padding: 16px; border-top: 1px solid var(--rule); align-items: start; }
@@ -109,15 +111,14 @@ input[type="date"]:focus-visible { outline: 2px solid var(--c); outline-offset: 
   font-family: var(--mono); font-variant-numeric: tabular-nums; line-height: 1.15;
   background: var(--ps); border-radius: 6px; padding: 10px 8px; text-align: center;
 }
-.date .md { font-size: 28px; font-weight: 600; color: var(--ink); }
-.date .md.range { font-size: 18px; }
+.date .md { font-size: 32px; font-weight: 700; color: var(--num); }
+.date .md.range { font-size: 21px; }
 .date .wd { font-family: var(--font); font-size: 13px; font-weight: 700; color: var(--pc); margin-top: 4px; }
 .step.past .date { background: var(--bg); }
-.step.final .date { background: var(--pc); }
-.step.final .date .md, .step.final .date .wd { color: var(--paper); }
+.step.final .date { box-shadow: inset 0 0 0 2px var(--pc); }
 .date .wd.we { color: var(--warn); }
 .body { min-width: 0; }
-.body h3 { margin: 0; font-size: 16px; font-weight: 700; }
+.body h3 { margin: 0; color: var(--title); font-size: 15px; font-weight: 700; }
 .body p { margin: 4px 0 0; font-size: 13px; color: var(--mute); }
 .body .gap { margin-top: 6px; font-size: 12px; color: var(--mute); display: flex; gap: 4px 12px; flex-wrap: wrap; }
 .body .gap .shift { color: var(--warn); }
@@ -142,8 +143,8 @@ footer { font-size: 12px; color: var(--mute); }
 @media (max-width: 560px) {
   .form { grid-template-columns: 1fr; }
   .step { grid-template-columns: 86px 1fr; }
-  .date .md { font-size: 22px; }
-  .date .md.range { font-size: 15px; }
+  .date .md { font-size: 26px; }
+  .date .md.range { font-size: 17px; }
 }
 </style>
 </head>
