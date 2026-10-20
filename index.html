@@ -489,6 +489,7 @@ $('history').addEventListener('click', e => {
     h.splice(+b.dataset.i, 1);
     saveH(h);
   } else {
+    $('savedMsg').hidden = true;
     $('pname').value = it.name;
     (it.mode === 'fwd' ? $('modeFwd') : $('modeBack')).checked = true;
     els.base.value = it.base;
