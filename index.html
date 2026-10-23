@@ -84,6 +84,11 @@ h1 { margin: 0; color: var(--title); font-size: clamp(20px, 3.6vw, 26px); font-w
 .seg { display: flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
 .seg label { flex: 1; text-align: center; padding: 9px 8px; cursor: pointer; font-size: 14px; font-weight: 500; position: relative; }
 .seg label + label { border-left: 1px solid var(--rule); }
+/* 起点が4つあるので、横一列だと字が3行に折れる。2×2 に並べる */
+.seg.mode-seg { display: grid; grid-template-columns: 1fr 1fr; }
+.seg.mode-seg label { border-left: 0; }
+.seg.mode-seg label:nth-child(even) { border-left: 1px solid var(--rule); }
+.seg.mode-seg label:nth-child(n+3) { border-top: 1px solid var(--rule); }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
 .seg label:has(input:checked) { background: var(--ink); color: var(--paper); }
 .seg label:has(input:focus-visible) { outline: 2px solid var(--c); outline-offset: -3px; }
@@ -324,9 +329,10 @@ footer { font-size: 12px; color: var(--mute); }
         </div>
         <div class="field">
           <span class="label">どちらから決める</span>
-          <div class="seg" role="radiogroup" aria-label="計算のしかた">
+          <div class="seg mode-seg" role="radiogroup" aria-label="計算のしかた">
             <label><input type="radio" name="mode" id="modeBack" value="back" checked>納品日<small>から逆算</small></label>
             <label><input type="radio" name="mode" id="modeSub" value="sub">入稿日<small>から前後を計算</small></label>
+            <label><input type="radio" name="mode" id="modeKou" value="kou">校了日<small>から前後を計算</small></label>
             <label><input type="radio" name="mode" id="modeFwd" value="fwd">商品情報の確定日<small>から順算</small></label>
           </div>
         </div>
@@ -388,7 +394,7 @@ const STEPS = [
     note: 'メーカーが入稿データから版下を起こして提出。文字・レイアウト・表示内容を確認する。' },
   { name: '色校正出稿（到着）', at: -31, short: '色校正 到着', by: 'print', ph: 'm',
     note: '色校正が届く。色見本と見比べて、色味の調整を指示する。' },
-  { name: '校了', at: -25, short: '校了', by: 'us', ph: 'm',
+  { name: '校了', at: -25, key: 'kou', short: '校了', by: 'us', ph: 'm',
     note: '色味の調整を終えて最終確認。ここから先は修正できない。' },
   { name: '校正刷り確認', at: -17, short: '校正刷り確認', by: 'us', ph: 'y',
     note: '本機での校正刷りを確認する。' },
@@ -447,6 +453,11 @@ function computeFor(mode, baseStr, shift) {
     end = base;
     submit = fix(end - TOTAL);
     fixDay = addBD(submit, -SWAP_BD);
+  } else if (mode === 'kou') {
+    // 校了日からは、納品日（校了の25日後）を出して、あとは納品日からの逆算と同じ
+    end = base - STEPS.find(s => s.key === 'kou').at;
+    submit = fix(end - TOTAL);
+    fixDay = addBD(submit, -SWAP_BD);
   } else if (mode === 'sub') {
     submit = base;
     fixDay = addBD(submit, -SWAP_BD);
@@ -463,7 +474,8 @@ function computeFor(mode, baseStr, shift) {
     if (s.key === 'submit') return { ...s, due: submit, from: null, shifted: submit !== end + s.at };
     // 納品日（逆算）は入力そのものなので動かさない
     const raw = end + s.at;
-    const due = (mode === 'back' && s.final) ? raw : fix(raw);
+    // 入力した日（逆算の納品日・校了日）は、土日でも動かさない
+    const due = ((mode === 'back' && s.final) || (mode === 'kou' && s.key === 'kou')) ? raw : fix(raw);
     const from = s.from != null ? fix(end + s.from) : null;
     return { ...s, due, from, shifted: due !== raw };
   });
@@ -474,7 +486,7 @@ function render() {
   const r = compute();
   if (!r) return;
   const { mode, end, start, submit, steps } = r;
-  els.baseLabel.textContent = { back: '包材納品日', sub: 'デザイン入稿日', fwd: '商品情報の確定日' }[mode];
+  els.baseLabel.textContent = { back: '包材納品日', sub: 'デザイン入稿日', kou: 'デザイン校了日', fwd: '商品情報の確定日' }[mode];
 
   const alerts = [];
   // チェックが1つでも付いたら、遅れは進み具合の札で見せる。ここは計画を立てる段階（まだ何も済んでいない）だけの注意
@@ -645,7 +657,7 @@ $('history').addEventListener('click', e => {
   } else {
     $('savedMsg').hidden = true;
     $('pname').value = it.name;
-    $({ back: 'modeBack', sub: 'modeSub', fwd: 'modeFwd' }[it.mode] || 'modeBack').checked = true;
+    $({ back: 'modeBack', sub: 'modeSub', kou: 'modeKou', fwd: 'modeFwd' }[it.mode] || 'modeBack').checked = true;
     els.base.value = it.base;
     els.shift.checked = it.shift;
     done = it.done || {};
