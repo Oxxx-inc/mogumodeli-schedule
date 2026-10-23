@@ -326,6 +326,7 @@ footer { font-size: 12px; color: var(--mute); }
           <span class="label">どちらから決める</span>
           <div class="seg" role="radiogroup" aria-label="計算のしかた">
             <label><input type="radio" name="mode" id="modeBack" value="back" checked>納品日<small>から逆算</small></label>
+            <label><input type="radio" name="mode" id="modeSub" value="sub">入稿日<small>から前後を計算</small></label>
             <label><input type="radio" name="mode" id="modeFwd" value="fwd">商品情報の確定日<small>から順算</small></label>
           </div>
         </div>
@@ -440,11 +441,16 @@ function computeFor(mode, baseStr, shift) {
   const fix = n => (shift ? backToWeekday(n) : n);
   // 逆算は納品日から入稿日を出し、その3営業日前を商品情報の確定日にする。
   // 順算は確定日（入力）から3営業日で入稿し、そこから実績の57日で納品する。
+  // 入稿日からは、前（確定日）を3営業日戻して、後ろ（納品日）を57日進める。
   let end, submit, fixDay;
   if (mode === 'back') {
     end = base;
     submit = fix(end - TOTAL);
     fixDay = addBD(submit, -SWAP_BD);
+  } else if (mode === 'sub') {
+    submit = base;
+    fixDay = addBD(submit, -SWAP_BD);
+    end = submit + TOTAL;
   } else {
     fixDay = base;
     submit = addBD(fixDay, SWAP_BD);
@@ -468,7 +474,7 @@ function render() {
   const r = compute();
   if (!r) return;
   const { mode, end, start, submit, steps } = r;
-  els.baseLabel.textContent = mode === 'back' ? '包材納品日' : '商品情報の確定日';
+  els.baseLabel.textContent = { back: '包材納品日', sub: 'デザイン入稿日', fwd: '商品情報の確定日' }[mode];
 
   const alerts = [];
   // チェックが1つでも付いたら、遅れは進み具合の札で見せる。ここは計画を立てる段階（まだ何も済んでいない）だけの注意
@@ -639,7 +645,7 @@ $('history').addEventListener('click', e => {
   } else {
     $('savedMsg').hidden = true;
     $('pname').value = it.name;
-    (it.mode === 'fwd' ? $('modeFwd') : $('modeBack')).checked = true;
+    $({ back: 'modeBack', sub: 'modeSub', fwd: 'modeFwd' }[it.mode] || 'modeBack').checked = true;
     els.base.value = it.base;
     els.shift.checked = it.shift;
     done = it.done || {};
